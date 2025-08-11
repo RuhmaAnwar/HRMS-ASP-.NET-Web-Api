@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HRMS.Models
 {
-    [Table("Employees")]
+    [Table("employees")]
     public class Employee
     {
         [Column("id")]
