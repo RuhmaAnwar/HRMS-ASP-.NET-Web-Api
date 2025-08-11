@@ -61,7 +61,7 @@ namespace HRMS.Data
             // Build raw SQL query
             var query = @"
                 SELECT id, first_name, last_name, email, department, role
-                FROM Employees
+                FROM employees
                 WHERE first_name ILIKE @filter
                    OR last_name ILIKE @filter
                    OR email ILIKE @filter
