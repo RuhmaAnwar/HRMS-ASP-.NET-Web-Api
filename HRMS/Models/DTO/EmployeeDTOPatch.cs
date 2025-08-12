@@ -19,9 +19,9 @@ namespace HRMS.Models.DTO
         [EmailAddress]
         public string? Email { get; set; }
 
-        [Column("department")]
-        [MaxLength(50)]
-        public string? Department { get; set; }
+        [Column("department_id")]
+        [Required]
+        public int DepartmentId { get; set; }
 
         [Column("role")]
         [MaxLength(50)]
