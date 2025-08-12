@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using HRMS.Models;
 
 namespace HRMS.Models
 {
@@ -25,14 +26,16 @@ namespace HRMS.Models
         [EmailAddress]
         public string Email { get; set; } = null!;
 
-        [Column("department")]
-        [Required]
-        [MaxLength(50)]
-        public string Department { get; set; } = null!;
-
         [Column("role")]
         [Required]
         [MaxLength(50)]
         public string Role { get; set; } = null!;
+
+        [Column("department_id")]
+        [Required]
+        public int DepartmentId { get; set; }
+
+        // Navigation property
+        public Department Department { get; set; } = null!;
     }
 }
