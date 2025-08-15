@@ -8,7 +8,7 @@ namespace HRMS.Models
         [Column("id")]
         public int Id { get; set; }
 
-        [Column("first_name")]
+        [Column("name")]
         [Required]
         [MaxLength(50)]
         public string Name { get; set; } = null!;

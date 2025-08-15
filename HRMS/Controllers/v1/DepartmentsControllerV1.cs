@@ -5,7 +5,7 @@ namespace HRMS.Controllers.v1
 {
     [Route("api/v1/departments")]
     [ApiController]
-    public class DepartmentsController : ControllerBase
+    public class DepartmentsControllerV1 : ControllerBase
     {
     }
 }
