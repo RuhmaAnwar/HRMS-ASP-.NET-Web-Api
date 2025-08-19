@@ -1,5 +1,6 @@
 ﻿using HRMS.Models.DTO;
 using HRMS.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HRMS.Controllers.v1
@@ -16,6 +17,7 @@ namespace HRMS.Controllers.v1
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetEmployees(
             [FromQuery] string filter = "",
             [FromQuery] string sort = "Id",
@@ -33,6 +35,7 @@ namespace HRMS.Controllers.v1
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateEmployee([FromBody] EmployeeDTO employeeDTO)
         {
             if (!ModelState.IsValid)

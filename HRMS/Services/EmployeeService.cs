@@ -1,43 +1,68 @@
 ﻿using AutoMapper;
+using HRMS.Data;
 using HRMS.Models;
 using HRMS.Models.DTO;
-using HRMS.Repositories.Interfaces;
 using HRMS.Services.Interfaces;
 using HRMS.Utilities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly IEmployeeRepository _employeeRepository;
-        private readonly IDepartmentRepository _departmentRepository;
+        private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
+        private readonly UserManager<Employee> _userManager;
 
-        public EmployeeService(IEmployeeRepository employeeRepository, IDepartmentRepository departmentRepository, IMapper mapper)
+        public EmployeeService(ApplicationDbContext context, IMapper mapper, UserManager<Employee> userManager)
         {
-            _employeeRepository = employeeRepository;
-            _departmentRepository = departmentRepository;
+            _context = context;
             _mapper = mapper;
+            _userManager = userManager;
         }
 
         public async Task<IActionResult> GetAllAsync(string filter, string sort, bool sortDescending, int page, int pageSize)
         {
+            // Validate pagination (unchanged)
             var validationResult = RequestValidator.ValidatePaginationParameters(page, pageSize);
-            if (validationResult != null)
-                return validationResult;
+            if (validationResult != null) return validationResult;
 
             try
             {
-                var employees = await _employeeRepository.GetAllAsync(filter, sort, sortDescending, page, pageSize);
-                var employeeDTOs = _mapper.Map<List<EmployeeDTO>>(employees);
-                return new OkObjectResult(employeeDTOs);
+                var query = _context.Employees
+                    .Include(e => e.Department)
+                    .AsQueryable();
+
+                // Apply filter (example: filter by name or email)
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    query = query.Where(e => e.FirstName.Contains(filter) || e.LastName.Contains(filter) || e.Email.Contains(filter));
+                }
+
+                // Apply sorting
+                query = sort.ToLower() switch
+                {
+                    "firstname" => sortDescending ? query.OrderByDescending(e => e.FirstName) : query.OrderBy(e => e.FirstName),
+                    "lastname" => sortDescending ? query.OrderByDescending(e => e.LastName) : query.OrderBy(e => e.LastName),
+                    "email" => sortDescending ? query.OrderByDescending(e => e.Email) : query.OrderBy(e => e.Email),
+                    _ => sortDescending ? query.OrderByDescending(e => e.Id) : query.OrderBy(e => e.Id),
+                };
+
+                // Pagination
+                var total = await query.CountAsync();
+                var employees = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var result = _mapper.Map<List<EmployeeDTO>>(employees);
+                return new OkObjectResult(new { Total = total, Employees = result });
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while retrieving employees.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
 
@@ -45,86 +70,96 @@ namespace HRMS.Services
         {
             try
             {
-                var employee = await _employeeRepository.GetByIdAsync(id);
+                var employee = await _context.Employees
+                    .Include(e => e.Department)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee does not exist." });
-                var employeeDTO = _mapper.Map<EmployeeDTO>(employee);
-                return new OkObjectResult(employeeDTO);
+                    return new NotFoundObjectResult(new { Message = "Employee not found" });
+
+                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while retrieving employee.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
 
         public async Task<IActionResult> CreateAsync(EmployeeDTO employeeDTO)
         {
-            if (employeeDTO == null)
-                return new BadRequestObjectResult(new { Message = "Employee data is required." });
-
             try
             {
-                var department = await _departmentRepository.GetByIdAsync(employeeDTO.DepartmentId);
-                if (department == null)
-                    return new BadRequestObjectResult(new { Message = "Invalid department ID." });
-
+                // Map DTO to Employee, excluding PasswordHash
                 var employee = _mapper.Map<Employee>(employeeDTO);
-                await _employeeRepository.AddAsync(employee);
+                employee.UserName = employeeDTO.Email; // Set UserName to Email
+
+                // Use UserManager to create user with password
+                var result = await _userManager.CreateAsync(employee, employeeDTO.Password);
+                if (!result.Succeeded)
+                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+
                 return new CreatedAtActionResult("GetEmployee", "EmployeesControllerV1", new { id = employee.Id }, _mapper.Map<EmployeeDTO>(employee));
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while creating employee.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
 
         public async Task<IActionResult> UpdateAsync(int id, EmployeeDTO employeeDTO)
         {
-            if (employeeDTO == null)
-                return new BadRequestObjectResult(new { Message = "Employee data is required." });
-
             try
             {
-                var employee = await _employeeRepository.GetByIdAsync(id);
+                var employee = await _userManager.FindByIdAsync(id.ToString());
                 if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found." });
+                    return new NotFoundObjectResult(new { Message = "Employee not found" });
 
-                var department = await _departmentRepository.GetByIdAsync(employeeDTO.DepartmentId);
-                if (department == null)
-                    return new BadRequestObjectResult(new { Message = "Invalid department ID." });
-
+                // Update properties
                 _mapper.Map(employeeDTO, employee);
-                await _employeeRepository.UpdateAsync(employee);
-                return new NoContentResult();
+                employee.UserName = employeeDTO.Email; // Sync UserName
+
+                var result = await _userManager.UpdateAsync(employee);
+                if (!result.Succeeded)
+                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+
+                // If password provided, update it
+                if (!string.IsNullOrEmpty(employeeDTO.Password))
+                {
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(employee);
+                    var passwordResult = await _userManager.ResetPasswordAsync(employee, token, employeeDTO.Password);
+                    if (!passwordResult.Succeeded)
+                        return new BadRequestObjectResult(new { Errors = passwordResult.Errors.Select(e => e.Description) });
+                }
+
+                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while updating employee.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
 
         public async Task<IActionResult> PatchAsync(int id, EmployeeDTOPatch employeeDTO)
         {
-            if (employeeDTO == null)
-                return new BadRequestObjectResult(new { Message = "Employee data is required." });
-
             try
             {
-                var employee = await _employeeRepository.GetByIdAsync(id);
+                var employee = await _userManager.FindByIdAsync(id.ToString());
                 if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found." });
+                    return new NotFoundObjectResult(new { Message = "Employee not found" });
 
-                var department = await _departmentRepository.GetByIdAsync(employeeDTO.DepartmentId);
-                if (department == null)
-                    return new BadRequestObjectResult(new { Message = "Invalid department ID." });
-
+                // Apply partial update
                 _mapper.Map(employeeDTO, employee);
-                await _employeeRepository.UpdateAsync(employee);
-                return new NoContentResult();
+                if (employeeDTO.Email != null)
+                    employee.UserName = employeeDTO.Email; // Sync UserName
+
+                var result = await _userManager.UpdateAsync(employee);
+                if (!result.Succeeded)
+                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+
+                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while updating employee.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
 
@@ -132,16 +167,19 @@ namespace HRMS.Services
         {
             try
             {
-                var employee = await _employeeRepository.GetByIdAsync(id);
+                var employee = await _userManager.FindByIdAsync(id.ToString());
                 if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found." });
+                    return new NotFoundObjectResult(new { Message = "Employee not found" });
 
-                await _employeeRepository.DeleteAsync(id);
+                var result = await _userManager.DeleteAsync(employee);
+                if (!result.Succeeded)
+                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+
                 return new NoContentResult();
             }
             catch (Exception ex)
             {
-                return ExceptionHandler.HandleException(ex, "employee", "Internal server error while deleting employee.");
+                return ExceptionHandler.HandleException(ex, "employee");
             }
         }
     }

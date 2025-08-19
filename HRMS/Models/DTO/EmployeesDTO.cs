@@ -20,10 +20,14 @@ namespace HRMS.Models.DTO
         [Required]
         public int DepartmentId { get; set; }
 
-        public string DepartmentName { get; set; } = null!;
+        //public string DepartmentName { get; set; } = null!;
 
         [Required]
         [MaxLength(50)]
         public string Role { get; set; } = null!;
+
+        [Required]
+        [MinLength(6)]  // strong password
+        public string Password { get; set; } = null!;
     }
 }

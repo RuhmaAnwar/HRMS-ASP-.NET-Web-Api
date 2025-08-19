@@ -1,9 +1,11 @@
 ﻿using HRMS.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HRMS.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<Employee, IdentityRole<int>, int>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -15,9 +17,15 @@ namespace HRMS.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder); // Call base to include Identity config
+
+            // Explicitly map Employee to "employees" table
+            modelBuilder.Entity<Employee>()
+                .ToTable("employees");
+
+            // Configure Employee entity
             modelBuilder.Entity<Employee>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.FirstName).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.LastName).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
@@ -29,8 +37,10 @@ namespace HRMS.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            // Configure Department entity
             modelBuilder.Entity<Department>(entity =>
             {
+                entity.ToTable("departments"); // Ensure consistent table name
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
                 entity.HasData(
@@ -40,6 +50,14 @@ namespace HRMS.Data
                     new Department { Id = 4, Name = "Marketing" },
                     new Department { Id = 5, Name = "Management" });
             });
+
+            // Override Identity table names (optional, for consistency)
+            modelBuilder.Entity<IdentityRole<int>>().ToTable("roles");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("user_roles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("user_claims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("user_logins");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("user_tokens");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("role_claims");
         }
     }
 }

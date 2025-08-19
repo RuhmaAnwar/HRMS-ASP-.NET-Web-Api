@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace HRMS.Models
 {
+    [Table("departments")]
     public class Department
     {
         [Column("id")]

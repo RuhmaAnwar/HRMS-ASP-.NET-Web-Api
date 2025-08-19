@@ -9,9 +9,11 @@ namespace HRMS.Mappings
         public MappingProfile()
         {
             // Map EmployeeDTO to Employee and vice versa
-            CreateMap<EmployeeDTO, Employee>();
-            CreateMap<Employee, EmployeeDTO>()
-                .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.Name));
+            CreateMap<EmployeeDTO, Employee>()
+            .ForMember(dest => dest.PasswordHash, opt => opt.Ignore());  // Handle password separately
+            //CreateMap<Employee, EmployeeDTO>()
+            //    .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.Name));
+
 
             // Map EmployeeDTOPatch to Employee for partial updates
             CreateMap<EmployeeDTOPatch, Employee>()

@@ -1,14 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using HRMS.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace HRMS.Models
 {
     [Table("employees")]
-    public class Employee
+    public class Employee : IdentityUser<int>
     {
         [Column("id")]
-        public int Id { get; set; }
+        public override int Id { get; set; }
 
         [Column("first_name")]
         [Required]
@@ -24,7 +25,7 @@ namespace HRMS.Models
         [Required]
         [MaxLength(100)]
         [EmailAddress]
-        public string Email { get; set; } = null!;
+        public override string  Email { get; set; } = null!;
 
         [Column("role")]
         [Required]
