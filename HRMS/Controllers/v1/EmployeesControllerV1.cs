@@ -1,12 +1,15 @@
-﻿using HRMS.Models.DTO;
+﻿
+using HRMS.Dtos.RequestDtos;
 using HRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HRMS.Controllers.v1
 {
     [ApiController]
     [Route("api/v1/employees")]
+    [Authorize]
     public class EmployeesControllerV1 : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
@@ -17,55 +20,90 @@ namespace HRMS.Controllers.v1
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = "Admin,HR,Manager")]
         public async Task<IActionResult> GetEmployees(
-            [FromQuery] string filter = "",
-            [FromQuery] string sort = "Id",
-            [FromQuery] bool sortDescending = false,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] Guid? departmentId = null,
+            [FromQuery] Guid? managerId = null,
+            [FromQuery] string? search = null)
         {
-            return await _employeeService.GetAllAsync(filter, sort, sortDescending, page, pageSize);
+            
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToArray();
+
+            var (employees, totalCount) = await _employeeService.GetAllAsync(page, pageSize, departmentId, managerId, search, userId, userRoles);
+
+            return Ok(new { totalCount, employees });
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetEmployee(int id)
+        [HttpGet("{id:Guid}")]
+        public async Task<IActionResult> GetEmployeeById(Guid id)
         {
-            return await _employeeService.GetByIdAsync(id);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToArray();
+
+            var employee = await _employeeService.GetByIdAsync(id, userId, userRoles);
+
+            return Ok(employee);
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> CreateEmployee([FromBody] EmployeeDTO employeeDTO)
+        [Authorize(Roles = "Admin,HR")]
+        public async Task<IActionResult> CreateEmployee([FromBody] EmployeeCreateRequestDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new { Errors = GetModelStateErrors() });
+                return BadRequest(new { Errors = GetModelStateErrors() }); ///////////////////////
 
-            return await _employeeService.CreateAsync(employeeDTO);
+            var employee = await _employeeService.CreateAsync(dto);
+
+            return CreatedAtAction(nameof(GetEmployeeById),new { id = employee.Id }, employee);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateEmployee(int id, [FromBody] EmployeeDTO employeeDTO)
+        [HttpPut("{id:Guid}")]
+        public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] EmployeeUpdateRequestDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { Errors = GetModelStateErrors() });
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToArray();
 
-            return await _employeeService.UpdateAsync(id, employeeDTO);
+            var employee = await _employeeService.UpdateAsync(id, dto, userId, userRoles);
+
+            return Ok(employee);
         }
 
-        [HttpPatch("{id}")]
-        public async Task<IActionResult> ModifyEmployee(int id, [FromBody] EmployeeDTOPatch employeeDTO)
+        [HttpDelete("{id:Guid}")]
+        [Authorize(Roles = "Admin,HR")]
+        public async Task<IActionResult> DeleteEmployee(Guid id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { Errors = GetModelStateErrors() });
+            await _employeeService.DeleteAsync(id);
 
-            return await _employeeService.PatchAsync(id, employeeDTO);
+            return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEmployee(int id)
+        [HttpGet("{id:Guid}/leave-balance")]
+        public async Task<IActionResult> GetLeaveBalance(Guid id)
         {
-            return await _employeeService.DeleteAsync(id);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToArray();
+
+            var leaveBalance = await _employeeService.GetLeaveBalanceAsync(id, userId, userRoles);
+
+            return Ok(leaveBalance);
+        }
+
+        [HttpGet("{id:Guid}/subordinates")]
+        [Authorize(Roles = "Admin,HR,Manager")]
+        public async Task<IActionResult> GetSubordinates(
+            Guid id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToArray();
+
+            var (subordinates, totalCount) = await _employeeService.GetSubordinatesAsync(id, page, pageSize, userId, userRoles);
+
+            return Ok(new { totalCount, subordinates });
         }
 
         private List<string> GetModelStateErrors()

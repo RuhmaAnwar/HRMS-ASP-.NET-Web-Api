@@ -1,16 +1,24 @@
 ﻿using HRMS.Data;
-using HRMS.Mappings;
 using HRMS.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using HRMS.Mappings;
 
-namespace HRMS.NewFolder
+namespace HRMS.Extensions
 {
     public static class ServiceExtension
     {
-        public static void ConfigPostgres(this IServiceCollection services, IConfiguration config)
+        
+    //public static IApplicationBuilder UseExceptionHandlerMiddleware(this IApplicationBuilder builder)
+    //    {
+    //        return builder.UseMiddleware<ExceptionHandlerMiddleware>();
+    //    }
+        
+    
+
+    public static void ConfigPostgres(this IServiceCollection services, IConfiguration config)
         {
-            var connectionString = config["ConnectionStrings"];
+            var connectionString = config["ConnectionStrings:Postgres"];
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString));
         }
@@ -25,11 +33,27 @@ namespace HRMS.NewFolder
 
         public static void ConfigCookieAuthentication(this IServiceCollection services)
         {
+            services.ConfigureApplicationCookie(
+                options =>
+                {
+                    options.Events.OnRedirectToAccessDenied = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden; // return 403 instead of redirect
+                        return Task.CompletedTask;
+                    };
+
+                    options.Events.OnRedirectToLogin = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized; // return 401 instead of redirect
+                        return Task.CompletedTask;
+                    };
+                });
             services.AddAuthentication(IdentityConstants.ApplicationScheme)
                 .AddCookie(options =>
                 {
+
+                    options.AccessDeniedPath = "";
                     options.LoginPath = "/api/v1/auth/login";
-                    options.AccessDeniedPath = "/api/v1/auth/accessdenied";
                     options.Cookie.Name = ".HRMS.AuthCookie";
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
@@ -41,9 +65,34 @@ namespace HRMS.NewFolder
 
         public static void AddEmployeeIdentity(this IServiceCollection services)
         {
-            services.AddIdentity<Employee, IdentityRole<int>>()
+            services.AddIdentity<Employee, IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
         }
+
+        public static async Task SeedRoles(this IServiceProvider serviceProvider)
+        {
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+            string[] roles = { "Admin", "HR", "Manager", "Employee" };
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<Guid> { Name = role });
+                }
+            }
+
+            var userManager = serviceProvider.GetRequiredService<UserManager<Employee>>();
+            var user = await userManager.FindByEmailAsync("ruhma@email.com");
+
+            if (user != null && !(await userManager.IsInRoleAsync(user, "Admin")))
+            {
+                await userManager.AddToRoleAsync(user, "Admin");
+            }
+        }
+
+
     }
 }

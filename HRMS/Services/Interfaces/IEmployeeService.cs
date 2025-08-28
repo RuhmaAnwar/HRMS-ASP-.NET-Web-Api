@@ -1,16 +1,52 @@
-﻿using HRMS.Models.DTO;
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+﻿using HRMS.Dtos;
+using HRMS.Dtos.RequestDtos;
+using HRMS.Dtos.ResponseDtos;
 
 namespace HRMS.Services.Interfaces
 {
     public interface IEmployeeService
     {
-        Task<IActionResult> GetAllAsync(string filter, string sort, bool sortDescending, int page, int pageSize);
-        Task<IActionResult> GetByIdAsync(int id);
-        Task<IActionResult> CreateAsync(EmployeeDTO employeeDTO);
-        Task<IActionResult> UpdateAsync(int id, EmployeeDTO employeeDTO);
-        Task<IActionResult> PatchAsync(int id, EmployeeDTOPatch employeeDTO);
-        Task<IActionResult> DeleteAsync(int id);
+        Task<(IEnumerable<EmployeeResponseDto> Employees, int TotalCount)> GetAllAsync(
+            int page,
+            int pageSize,
+            Guid? departmentId,
+            Guid? managerId,
+            string? search,
+            Guid currentUserId,
+            string[] userRoles
+        );
+
+        Task<EmployeeResponseDto> GetByIdAsync(
+            Guid id,
+            Guid currentUserId,
+            string[] userRoles
+        );
+
+        Task<(IEnumerable<EmployeeResponseDto> Subordinates, int TotalCount)> GetSubordinatesAsync(
+            Guid id,
+            int page,
+            int pageSize,
+            Guid currentUserId,
+            string[] userRoles
+        );
+
+        Task<EmployeeResponseDto> CreateAsync(EmployeeCreateRequestDto dto);
+
+        Task<EmployeeResponseDto> UpdateAsync(
+            Guid id,
+            EmployeeUpdateRequestDto dto,
+            Guid currentUserId,
+            string[] userRoles
+        );
+
+        Task DeleteAsync(Guid id);
+
+        Task<LeaveBalanceResponseDto> GetLeaveBalanceAsync(
+            Guid id,
+            Guid currentUserId,
+            string[] userRoles
+        );
+
+        Guid? GetIdByEmail(string email);
     }
 }

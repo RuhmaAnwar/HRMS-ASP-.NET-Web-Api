@@ -1,20 +1,32 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
 
 namespace HRMS.Models
 {
-    [Table("departments")]
     public class Department
     {
         [Column("id")]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Column("name")]
-        [Required]
-        [MaxLength(50)]
-        public string Name { get; set; } = null!;
+        public string Name { get; set; }
 
-        // navigation property for employees
-        public ICollection<Employee> Employees { get; set; } = null!;
+        [Column("description")]
+        public string Description { get; set; }
+
+        [Column("head_employee_id")]
+        public Guid? HeadEmployeeId { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+
+        [Column("is_deleted")]
+        public bool IsDeleted { get; set; }
+        // Navigation properties
+        public Employee? HeadEmployee { get; set; }
+        public ICollection<Employee> Employees { get; set; }
+        public ICollection<Position> Positions { get; set; }
     }
 }

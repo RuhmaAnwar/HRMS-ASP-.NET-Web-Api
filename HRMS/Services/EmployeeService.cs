@@ -1,186 +1,201 @@
 ﻿using AutoMapper;
 using HRMS.Data;
+using HRMS.Dtos.RequestDtos;
+using HRMS.Dtos.ResponseDtos;
+using HRMS.Middleware;
 using HRMS.Models;
-using HRMS.Models.DTO;
-using HRMS.Services.Interfaces;
-using HRMS.Utilities;
+using HRMS.Repositories.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using HRMS.Services.Interfaces;
 
 namespace HRMS.Services
 {
+    
     public class EmployeeService : IEmployeeService
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly IEmployeeRepository _employeeRepository;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly IPositionRepository _positionRepository;
         private readonly UserManager<Employee> _userManager;
+        private readonly IMapper _mapper;
 
-        public EmployeeService(ApplicationDbContext context, IMapper mapper, UserManager<Employee> userManager)
+        public EmployeeService(
+            IEmployeeRepository employeeRepository,
+            IDepartmentRepository departmentRepository,
+            IPositionRepository positionRepository,
+            UserManager<Employee> userManager,
+            IMapper mapper
+        )
         {
-            _context = context;
-            _mapper = mapper;
+            _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _positionRepository = positionRepository;
             _userManager = userManager;
+            _mapper = mapper;
         }
 
-        public async Task<IActionResult> GetAllAsync(string filter, string sort, bool sortDescending, int page, int pageSize)
+        public async Task<(IEnumerable<EmployeeResponseDto> Employees, int TotalCount)> GetAllAsync(
+            int page,
+            int pageSize,
+            Guid? departmentId,
+            Guid? managerId,
+            string? search,
+            Guid currentUserId,
+            string[] userRoles
+        )
         {
-            // Validate pagination (unchanged)
-            var validationResult = RequestValidator.ValidatePaginationParameters(page, pageSize);
-            if (validationResult != null) return validationResult;
+            if (userRoles.Contains("Employee"))
+                throw new UnauthorizedAccessException("Employees cannot access all employees.");
 
-            try
-            {
-                var query = _context.Employees
-                    .Include(e => e.Department)
-                    .AsQueryable();
+            var managerIdToUse = userRoles.Contains("Manager") ? currentUserId : managerId;
 
-                // Apply filter (example: filter by name or email)
-                if (!string.IsNullOrEmpty(filter))
-                {
-                    query = query.Where(e => e.FirstName.Contains(filter) || e.LastName.Contains(filter) || e.Email.Contains(filter));
-                }
+            if (userRoles.Contains("Manager") && managerId.HasValue && managerId != currentUserId)
+                throw new UnauthorizedAccessException("Managers can only access their own subordinates.");
 
-                // Apply sorting
-                query = sort.ToLower() switch
-                {
-                    "firstname" => sortDescending ? query.OrderByDescending(e => e.FirstName) : query.OrderBy(e => e.FirstName),
-                    "lastname" => sortDescending ? query.OrderByDescending(e => e.LastName) : query.OrderBy(e => e.LastName),
-                    "email" => sortDescending ? query.OrderByDescending(e => e.Email) : query.OrderBy(e => e.Email),
-                    _ => sortDescending ? query.OrderByDescending(e => e.Id) : query.OrderBy(e => e.Id),
-                };
+            var employees = await _employeeRepository.GetAllAsync(page, pageSize, departmentId, managerIdToUse, search);
+            var totalCount = await _employeeRepository.GetTotalCountAsync(departmentId, managerIdToUse, search);
 
-                // Pagination
-                var total = await query.CountAsync();
-                var employees = await query
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                var result = _mapper.Map<List<EmployeeDTO>>(employees);
-                return new OkObjectResult(new { Total = total, Employees = result });
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            var response = _mapper.Map<IEnumerable<EmployeeResponseDto>>(employees);
+            return (response, totalCount);
         }
 
-        public async Task<IActionResult> GetByIdAsync(int id)
+        public async Task<EmployeeResponseDto> GetByIdAsync(Guid id, Guid currentUserId, string[] userRoles)
         {
-            try
-            {
-                var employee = await _context.Employees
-                    .Include(e => e.Department)
-                    .FirstOrDefaultAsync(e => e.Id == id);
-                if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found" });
+            if (userRoles.Contains("Employee") && id != currentUserId)
+                throw new UnauthorizedAccessException("Employees can only access their own data.");
 
-                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            var employee = await _employeeRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Employee with ID {id} not found or is deleted.");
+
+            if (userRoles.Contains("Manager") && employee.ManagerId != currentUserId)
+                throw new UnauthorizedAccessException("Managers can only access their subordinates' data.");
+
+            return _mapper.Map<EmployeeResponseDto>(employee);
         }
 
-        public async Task<IActionResult> CreateAsync(EmployeeDTO employeeDTO)
+        public async Task<EmployeeResponseDto> CreateAsync(EmployeeCreateRequestDto dto)
         {
-            try
-            {
-                // Map DTO to Employee, excluding PasswordHash
-                var employee = _mapper.Map<Employee>(employeeDTO);
-                employee.UserName = employeeDTO.Email; // Set UserName to Email
+            if (!await _departmentRepository.ExistsAsync(dto.DepartmentId))
+                throw new ValidationException("Invalid DepartmentId.");
 
-                // Use UserManager to create user with password
-                var result = await _userManager.CreateAsync(employee, employeeDTO.Password);
-                if (!result.Succeeded)
-                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+            if (!await _positionRepository.ExistsAsync(dto.PositionId))
+                throw new ValidationException("Invalid PositionId.");
 
-                return new CreatedAtActionResult("GetEmployee", "EmployeesControllerV1", new { id = employee.Id }, _mapper.Map<EmployeeDTO>(employee));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            if (dto.ManagerId.HasValue && ! await _employeeRepository.ManagerExistsAsync(dto.ManagerId))
+                throw new ValidationException("Invalid ManagerId.");
+
+            var (isSalaryValid, messsage) = await _employeeRepository.CheckSalaryValidity(dto.Salary, dto.PositionId); // check if salary for position is valid
+            if (!isSalaryValid) 
+                throw new ValidationException(messsage);
+
+            var employee = _mapper.Map<Employee>(dto);
+            employee.Id = Guid.NewGuid();
+            employee.CreatedAt = DateTime.UtcNow;
+            employee.UpdatedAt = DateTime.UtcNow;
+
+            var result = await _userManager.CreateAsync(employee, dto.Password);
+            if (!result.Succeeded)
+                throw new ValidationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+            
+            if (dto.Roles?.Any() == true)
+                await _userManager.AddToRolesAsync(employee, dto.Roles);
+
+            return _mapper.Map<EmployeeResponseDto>(employee);
         }
 
-        public async Task<IActionResult> UpdateAsync(int id, EmployeeDTO employeeDTO)
+        public async Task<EmployeeResponseDto> UpdateAsync(
+            Guid id,
+            EmployeeUpdateRequestDto dto,
+            Guid currentUserId,
+            string[] userRoles
+        )
         {
-            try
-            {
-                var employee = await _userManager.FindByIdAsync(id.ToString());
-                if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found" });
+            var employee = await _employeeRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Employee with ID {id} not found or is deleted.");
 
-                // Update properties
-                _mapper.Map(employeeDTO, employee);
-                employee.UserName = employeeDTO.Email; // Sync UserName
+            if (userRoles.Contains("Employee") && id != currentUserId)
+                throw new UnauthorizedAccessException("Employees can only update their own data.");
 
-                var result = await _userManager.UpdateAsync(employee);
-                if (!result.Succeeded)
-                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+            if (userRoles.Contains("Manager") && employee.ManagerId != currentUserId)
+                throw new UnauthorizedAccessException("Managers can only update their subordinates' data.");
 
-                // If password provided, update it
-                if (!string.IsNullOrEmpty(employeeDTO.Password))
-                {
-                    var token = await _userManager.GeneratePasswordResetTokenAsync(employee);
-                    var passwordResult = await _userManager.ResetPasswordAsync(employee, token, employeeDTO.Password);
-                    if (!passwordResult.Succeeded)
-                        return new BadRequestObjectResult(new { Errors = passwordResult.Errors.Select(e => e.Description) });
-                }
+            if (userRoles.Contains("Manager") &&
+                (dto.Salary != employee.Salary || dto.TotalLeaves != employee.TotalLeaves || dto.LeavesUsed != employee.LeavesUsed))
+                throw new UnauthorizedAccessException("Managers cannot update Salary, TotalLeaves, or LeavesUsed.");
 
-                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            if (userRoles.Contains("Employee") &&
+                (dto.Salary != employee.Salary || dto.TotalLeaves != employee.TotalLeaves ||
+                 dto.LeavesUsed != employee.LeavesUsed || dto.DepartmentId != employee.DepartmentId ||
+                 dto.PositionId != employee.PositionId || dto.ManagerId != employee.ManagerId))
+                throw new UnauthorizedAccessException("Employees cannot update Salary, TotalLeaves, LeavesUsed, DepartmentId, PositionId, or ManagerId.");
+
+            if (dto.TotalLeaves < dto.LeavesUsed || dto.LeavesUsed < 0)
+                throw new ValidationException("TotalLeaves must be greater than or equal to LeavesUsed, and LeavesUsed must be non-negative.");
+
+            if (!await _departmentRepository.ExistsAsync(dto.DepartmentId))
+                throw new ValidationException("Invalid DepartmentId.");
+
+            if (!await _positionRepository.ExistsAsync(dto.PositionId))
+                throw new ValidationException("Invalid PositionId.");
+
+            if (dto.ManagerId.HasValue && ! await _employeeRepository.ManagerExistsAsync(dto.ManagerId))
+                throw new ValidationException("Invalid ManagerId.");
+
+            _mapper.Map(dto, employee);
+            employee.UpdatedAt = DateTime.UtcNow;
+
+            await _userManager.UpdateAsync(employee);
+            await _employeeRepository.UpdateAsync(employee);
+
+            return _mapper.Map<EmployeeResponseDto>(employee);
         }
 
-        public async Task<IActionResult> PatchAsync(int id, EmployeeDTOPatch employeeDTO)
+        public async Task DeleteAsync(Guid id)
         {
-            try
-            {
-                var employee = await _userManager.FindByIdAsync(id.ToString());
-                if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found" });
+            var employee = await _employeeRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Employee with ID {id} not found or is deleted.");
 
-                // Apply partial update
-                _mapper.Map(employeeDTO, employee);
-                if (employeeDTO.Email != null)
-                    employee.UserName = employeeDTO.Email; // Sync UserName
-
-                var result = await _userManager.UpdateAsync(employee);
-                if (!result.Succeeded)
-                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
-
-                return new OkObjectResult(_mapper.Map<EmployeeDTO>(employee));
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            await _employeeRepository.SoftDeleteAsync(id);
         }
 
-        public async Task<IActionResult> DeleteAsync(int id)
+        public async Task<LeaveBalanceResponseDto> GetLeaveBalanceAsync(Guid id, Guid currentUserId, string[] userRoles)
         {
-            try
-            {
-                var employee = await _userManager.FindByIdAsync(id.ToString());
-                if (employee == null)
-                    return new NotFoundObjectResult(new { Message = "Employee not found" });
+            var employee = await _employeeRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Employee with ID {id} not found or is deleted.");
 
-                var result = await _userManager.DeleteAsync(employee);
-                if (!result.Succeeded)
-                    return new BadRequestObjectResult(new { Errors = result.Errors.Select(e => e.Description) });
+            if (userRoles.Contains("Employee") && id != currentUserId)
+                throw new UnauthorizedAccessException("Employees can only access their own leave balance.");
 
-                return new NoContentResult();
-            }
-            catch (Exception ex)
-            {
-                return ExceptionHandler.HandleException(ex, "employee");
-            }
+            if (userRoles.Contains("Manager") && employee.ManagerId != currentUserId)
+                throw new UnauthorizedAccessException("Managers can only access their subordinates' leave balance.");
+
+            return _mapper.Map<LeaveBalanceResponseDto>(employee);
+        }
+
+        public async Task<(IEnumerable<EmployeeResponseDto> Subordinates, int TotalCount)> GetSubordinatesAsync(
+            Guid id,
+            int page,
+            int pageSize,
+            Guid currentUserId,
+            string[] userRoles
+        )
+        {
+            if (userRoles.Contains("Employee"))
+                throw new UnauthorizedAccessException("Employees cannot access subordinates.");
+
+            if (userRoles.Contains("Manager") && id != currentUserId)
+                throw new UnauthorizedAccessException("Managers can only access their own subordinates.");
+
+            var subordinates = await _employeeRepository.GetSubordinatesAsync(id, page, pageSize);
+            var totalCount = await _employeeRepository.GetTotalCountAsync(null, id, null);
+
+            var response = _mapper.Map<IEnumerable<EmployeeResponseDto>>(subordinates);
+            return (response, totalCount);
+        }
+
+        public Guid? GetIdByEmail(string email)
+        {
+            return _employeeRepository.GetIdByEmail(email);
         }
     }
 }

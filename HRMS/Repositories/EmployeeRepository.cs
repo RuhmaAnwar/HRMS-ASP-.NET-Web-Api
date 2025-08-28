@@ -2,12 +2,10 @@
 using HRMS.Models;
 using HRMS.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace HRMS.Repositories
 {
+
     public class EmployeeRepository : IEmployeeRepository
     {
         private readonly ApplicationDbContext _context;
@@ -17,56 +15,64 @@ namespace HRMS.Repositories
             _context = context;
         }
 
-        public async Task<List<Employee>> GetAllAsync(string filter, string sort, bool sortDescending, int page, int pageSize)
+        public async Task<IEnumerable<Employee>> GetAllAsync(
+            int page,
+            int pageSize,
+            Guid? departmentId,
+            Guid? managerId,
+            string? search
+        )
         {
-            filter = string.IsNullOrWhiteSpace(filter) ? "%%" : $"%{filter.Replace("'", "''")}%";
-            var sortColumn = sort switch
-            {
-                "FirstName" => "e.first_name",
-                "LastName" => "e.last_name",
-                "Email" => "e.email",
-                "Role" => "e.role",
-                "DepartmentId" => "e.department_id",
-                "DepartmentName" => "d.name",
-                _ => "e.id"
-            };
-            var sortDirection = sortDescending ? "DESC" : "ASC";
-            var offset = (page - 1) * pageSize;
+            var query = _context.Employees
+                .Where(e => !e.IsDeleted)
+                .Include(e => e.Department)
+                .Include(e => e.Position)
+                .Include(e => e.Manager)
+                .AsNoTracking();
 
-            var query = @"
-                SELECT e.id, e.first_name, e.last_name, e.email, e.department_id, e.role, d.name AS department_name
-                FROM employees e
-                JOIN departments d ON e.department_id = d.id
-                WHERE e.first_name ILIKE @filter
-                   OR e.last_name ILIKE @filter
-                   OR e.email ILIKE @filter
-                   OR d.name ILIKE @filter
-                ORDER BY {0} {1}
-                LIMIT @pageSize OFFSET @offset";
+            if (departmentId.HasValue)
+                query = query.Where(e => e.DepartmentId == departmentId.Value);
 
-            query = string.Format(query, sortColumn, sortDirection);
-            var employees = await _context.Employees
-                .FromSqlRaw(query,
-                    new NpgsqlParameter("@filter", filter),
-                    new NpgsqlParameter("@pageSize", pageSize),
-                    new NpgsqlParameter("@offset", offset))
-                .Include(e => e.Department) // Ensure Department is loaded
+            if (managerId.HasValue)
+                query = query.Where(e => e.ManagerId == managerId.Value);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(
+                    e =>
+                        EF.Functions.ILike(e.FirstName, $"%{search}%")
+                        || EF.Functions.ILike(e.LastName, $"%{search}%")
+                );
+
+            return await query
+                .OrderBy(e => e.FirstName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
-
-            return employees;
         }
 
-        public async Task<Employee?> GetByIdAsync(int id)
+        public async Task<Employee?> GetByIdAsync(Guid id)
         {
             return await _context.Employees
                 .Include(e => e.Department)
-                .FirstOrDefaultAsync(e => e.Id == id);
+                .Include(e => e.Position)
+                .Include(e => e.Manager)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+
         }
 
-        public async Task AddAsync(Employee employee)
+        public async Task<Employee> CreateAsync(Employee employee)
         {
             _context.Employees.Add(employee);
             await _context.SaveChangesAsync();
+
+            var createdEmployee = await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.Position)
+                .Include(e => e.Manager)
+                .FirstOrDefaultAsync(e => e.Id == employee.Id && !e.IsDeleted);
+
+            return employee;
         }
 
         public async Task UpdateAsync(Employee employee)
@@ -75,14 +81,97 @@ namespace HRMS.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteAsync(int id)
+        public async Task SoftDeleteAsync(Guid id)
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
             {
-                _context.Employees.Remove(employee);
+                employee.IsDeleted = true;
+                employee.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        public async Task<IEnumerable<Employee>> GetSubordinatesAsync(
+            Guid managerId,
+            int page,
+            int pageSize
+        )
+        {
+            return await _context.Employees
+                .Where(e => e.ManagerId == managerId && !e.IsDeleted)
+                .Include(e => e.Department)
+                .Include(e => e.Position)
+                .OrderBy(e => e.FirstName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalCountAsync(
+            Guid? departmentId,
+            Guid? managerId,
+            string? search
+        )
+        {
+            var query = _context.Employees.Where(e => !e.IsDeleted);
+
+            if (departmentId.HasValue)
+                query = query.Where(e => e.DepartmentId == departmentId.Value);
+
+            if (managerId.HasValue)
+                query = query.Where(e => e.ManagerId == managerId.Value);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(
+                    e =>
+                        EF.Functions.ILike(e.FirstName, $"%{search}%")
+                        || EF.Functions.ILike(e.LastName, $"%{search}%")
+                );
+
+            return await query.CountAsync();
+        }
+
+        public async Task UpdateLeaveBalanceAsync(Guid id, int leavesUsed)
+        {
+            var employee = await _context.Employees.FindAsync(id);
+            if (employee != null)
+            {
+                employee.LeavesUsed = leavesUsed;
+                employee.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public Guid? GetIdByEmail(string email)
+        {
+            var employee = _context.Employees.FirstOrDefault(e =>
+                e.Email == email && !e.IsDeleted
+            );
+            return employee != null ? employee.Id : Guid.Empty;
+        }
+
+        public async Task<bool> ManagerExistsAsync(Guid? managerId)
+        {
+            return await _context.Employees
+                .AnyAsync(e => e.Id == managerId && !e.IsDeleted);
+        }
+
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
+        }
+    
+
+    public async Task<(bool isValid, string message)> CheckSalaryValidity(decimal salary, Guid posId)
+        {
+            var position = await _context.Positions.FindAsync(posId);
+            if (salary < position.SalaryRangeMin || salary > position.SalaryRangeMax)
+            {
+                return (false, $"salary for {position.Title} position should be between {position.SalaryRangeMin} and {position.SalaryRangeMax}");
+            }
+            return (true, "valid salary");
         }
     }
 }
