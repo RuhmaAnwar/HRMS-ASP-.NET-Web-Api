@@ -44,6 +44,30 @@ namespace HRMS.Services
             };
         }
 
+        public async Task<Employee> LoginJWT(LoginRequestDto dto)
+        {
+            var employee = await _authRepository.FindByEmailAsync(dto.Email);
+            if (employee == null)
+                throw new ValidationException("Invalid email or password.");
+
+            var result = await _signInManager.PasswordSignInAsync(
+                dto.Email,
+                dto.Password,
+                isPersistent: true,
+                lockoutOnFailure: false
+            );
+
+            if (!result.Succeeded)
+                throw new ValidationException("Invalid email or password.");
+
+            return employee;
+        }
+
+        public async Task<string> GenerateJwtToken(Employee user)
+        {
+            return await _authRepository.GenerateJwtToken(user);
+        }
+
         public async Task LogoutAsync()
         {
             await _signInManager.SignOutAsync();
