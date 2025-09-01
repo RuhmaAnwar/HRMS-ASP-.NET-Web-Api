@@ -8,15 +8,15 @@ namespace HRMS.Extensions
 {
     public static class ServiceExtension
     {
-        
-    //public static IApplicationBuilder UseExceptionHandlerMiddleware(this IApplicationBuilder builder)
-    //    {
-    //        return builder.UseMiddleware<ExceptionHandlerMiddleware>();
-    //    }
-        
-    
 
-    public static void ConfigPostgres(this IServiceCollection services, IConfiguration config)
+        //public static IApplicationBuilder UseExceptionHandlerMiddleware(this IApplicationBuilder builder)
+        //    {
+        //        return builder.UseMiddleware<ExceptionHandlerMiddleware>();
+        //    }
+
+
+        // extension methods ... using this, lik this IServiceCollection is used to make ConfigPostgres an extension method to IServiceCollection
+        public static void ConfigPostgres(this IServiceCollection services, IConfiguration config)
         {
             var connectionString = config["ConnectionStrings:Postgres"];
             services.AddDbContext<ApplicationDbContext>(options =>

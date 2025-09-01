@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Security.Cryptography;
 
 namespace HRMS.Data
 {
@@ -20,6 +21,9 @@ namespace HRMS.Data
         public DbSet<Position> Positions { get; set; } = null!;
         public DbSet<Attendance> Attendances { get; set; } = null!;
         public DbSet<Leave> Leaves { get; set; } = null!;
+        public DbSet<SigningKey> SigningKeys { get; set; } = null!;
+
+
 
         // ignores the dynamic values error in seeding
         // ////////////////////////////////////////////////////////////// remove in production
@@ -34,7 +38,27 @@ namespace HRMS.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<SigningKey>(entity =>
+            {
+                entity.HasKey(k => k.Id);
+                using var rsa = RSA.Create(2048);
+                // Export the private key as a Base64-encoded string.
+                var privateKey = Convert.ToBase64String(rsa.ExportRSAPrivateKey());
+                // Export the public key as a Base64-encoded string.
+                var publicKey = Convert.ToBase64String(rsa.ExportRSAPublicKey());
+                var newKeyId = Guid.NewGuid().ToString();
 
+                entity.HasData(new SigningKey
+                {
+                    Id = Guid.NewGuid(),
+                    KeyId = newKeyId,
+                    PrivateKey = privateKey,
+                    PublicKey = publicKey,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddHours(5),
+                    ExpiresAt = DateTime.UtcNow.AddYears(1) // Set the new key to expire in one year.
+                });
+            });
 
             // Configure Employee entity
             modelBuilder.Entity<Employee>(entity =>

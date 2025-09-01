@@ -7,6 +7,7 @@ using HRMS.Services;
 using HRMS.Services.Interfaces;
 using HRMS.Jobs;
 using Quartz;
+//using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,12 @@ builder.Services.ConfigAutomapper();
 builder.Services.AddEmployeeIdentity();
 
 builder.Services.ConfigCookieAuthentication();
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//           .AddJwtBearer(jwtOptions =>
+//           {
+//               jwtOptions.Authority = "https://{--your-authority--}";
+//               jwtOptions.Audience = "https://{--your-audience--}";
+//           });
 
 var app = builder.Build();
 
