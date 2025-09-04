@@ -1,4 +1,5 @@
 
+using HRMS.Data;
 using HRMS.Extensions;
 using HRMS.Jobs;
 using HRMS.Middleware; 
@@ -8,7 +9,9 @@ using HRMS.Services;
 using HRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Quartz;
+using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,51 +64,73 @@ builder.Services.AddEmployeeIdentity();
 
 builder.Services.ConfigCookieAuthentication();
 
-// Configure JWT
+// Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    // This indicates the authentication scheme that will be used by default when the app encounters an authentication challenge. 
-    // Which authentication handler to use for responding to failed authentication or authorization attempts.
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-            .AddJwtBearer(options =>
+}).AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = "localhost",
+        ValidAudience = "Profile",
+        IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
+        {
+            using var scope = builder.Services.BuildServiceProvider().CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var signingKey = context.SigningKeys.FirstOrDefault(k => k.KeyId == kid && k.IsActive);
+            if (signingKey == null)
             {
-                // Define token validation parameters to ensure tokens are valid and trustworthy
-                options.TokenValidationParameters = new TokenValidationParameters
+                return null;
+            }
+            var rsa = RSA.Create();
+            rsa.ImportRSAPublicKey(Convert.FromBase64String(signingKey.PublicKey), out _);
+            return new[] { new RsaSecurityKey(rsa) };
+        }
+    };
+});
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "HRMS API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
                 {
-                    ValidateIssuer = true, // Ensure the token was issued by a trusted issuer
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"], // The expected issuer value from configuration
-                    ValidateAudience = false, // Disable audience validation (can be enabled as needed)
-                    ValidateLifetime = true, // Ensure the token has not expired
-                    ValidateIssuerSigningKey = true, // Ensure the token's signing key is valid
-                    // Define a custom IssuerSigningKeyResolver to dynamically retrieve signing keys from the JWKS endpoint
-                    //IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
-                    //{
-                    //    //Console.WriteLine($"Received Token: {token}");
-                    //    //Console.WriteLine($"Token Issuer: {securityToken.Issuer}");
-                    //    //Console.WriteLine($"Key ID: {kid}");
-                    //    //Console.WriteLine($"Validate Lifetime: {parameters.ValidateLifetime}");
-                    //    // Initialize an HttpClient instance for fetching the JWKS
-                    //    var httpClient = new HttpClient();
-                    //    // Synchronously fetch the JWKS (JSON Web Key Set) from the specified URL
-                    //    var jwks = httpClient.GetStringAsync($"{builder.Configuration["Jwt:Issuer"]}/.well-known/jwks.json").Result;
-                    //    // Parse the fetched JWKS into a JsonWebKeySet object
-                    //    var keys = new JsonWebKeySet(jwks);
-                    //    // Return the collection of JsonWebKey objects for token validation
-                    //    return keys.Keys;
-                    //}
-                };
-            });
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
 
 var app = builder.Build();
 
 // Seed roles
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    await services.SeedRoles();
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
+//    await services.SeedRoles();
+//}
 
 if (app.Environment.IsDevelopment())
 {

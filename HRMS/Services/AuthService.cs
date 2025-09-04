@@ -1,10 +1,17 @@
-﻿using HRMS.Dtos.RequestDtos;
+﻿using AutoMapper;
+using HRMS.Data;
+using HRMS.Dtos.RequestDtos;
 using HRMS.Dtos.ResponseDtos;
 using HRMS.Middleware;
 using HRMS.Models;
 using HRMS.Repositories.Interfaces;
 using HRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace HRMS.Services
 {
@@ -12,11 +19,15 @@ namespace HRMS.Services
     {
         private readonly IAuthRepository _authRepository;
         private readonly SignInManager<Employee> _signInManager;
+        private readonly IMapper _mapper;
+        private readonly ApplicationDbContext _context;
 
-        public AuthService(IAuthRepository authRepository, SignInManager<Employee> signInManager)
+        public AuthService(IAuthRepository authRepository, SignInManager<Employee> signInManager, IMapper mapper, ApplicationDbContext context)
         {
             _authRepository = authRepository;
             _signInManager = signInManager;
+            _mapper = mapper;
+            _context = context;
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
@@ -70,6 +81,21 @@ namespace HRMS.Services
 
         public async Task LogoutAsync()
         {
+            // Revoke all refresh tokens for the user
+            var userId = _signInManager.Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var employeeId))
+            {
+                var refreshTokens = await _context.RefreshTokens
+                    .Where(rt => rt.EmployeeId == employeeId && !rt.IsRevoked)
+                    .ToListAsync();
+                foreach (var token in refreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow.AddHours(5);
+                }
+                await _context.SaveChangesAsync();
+            }
+
             await _signInManager.SignOutAsync();
         }
 
@@ -130,6 +156,34 @@ namespace HRMS.Services
 
             var token = await _authRepository.GeneratePasswordResetTokenAsync(user);
             return await _authRepository.ResetPasswordAsync(user, token, dto.newPassword);
+        }
+
+        public string GenerateHashedRefreshToken()
+        {
+            var randomNumber = new byte[64];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                var token = Convert.ToBase64String(randomNumber);
+                return token;
+                //return HashToken(token);
+            }
+        }
+
+        private string HashToken(string token)
+        {
+            using var sha256 = SHA256.Create();
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(hashedBytes);
+        }
+
+        public async Task<TokenResponseDTO> CreateRefreshTokenAsync(Guid userId, string accessToken)
+        {
+            var hashedRefreshToken = GenerateHashedRefreshToken();
+            var token = await _authRepository.CreateRefreshTokenAsync(userId, hashedRefreshToken);
+            var response = _mapper.Map<TokenResponseDTO>(token);
+            response.Token = accessToken;
+            return response;
         }
     }
 }

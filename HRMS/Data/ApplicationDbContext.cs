@@ -3,6 +3,7 @@ using HRMS.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Security.Cryptography;
 
@@ -23,7 +24,7 @@ namespace HRMS.Data
         public DbSet<Leave> Leaves { get; set; } = null!;
         public DbSet<SigningKey> SigningKeys { get; set; } = null!;
 
-
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         // ignores the dynamic values error in seeding
         // ////////////////////////////////////////////////////////////// remove in production
@@ -40,6 +41,8 @@ namespace HRMS.Data
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<SigningKey>(entity =>
             {
+                entity.ToTable("signing_keys");
+
                 entity.HasKey(k => k.Id);
                 using var rsa = RSA.Create(2048);
                 // Export the private key as a Base64-encoded string.
@@ -58,6 +61,19 @@ namespace HRMS.Data
                     CreatedAt = DateTime.UtcNow.AddHours(5),
                     ExpiresAt = DateTime.UtcNow.AddYears(1) // Set the new key to expire in one year.
                 });
+            });
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.ToTable("refresh_tokens");
+                entity.HasKey(rf => rf.Id);
+
+                // When a User is deleted, their associated refresh tokens are also deleted to maintain data integrity
+                entity.HasOne(rt => rt.Employee)
+                .WithMany(e => e.RefreshTokens)
+                .HasForeignKey(rt => rt.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(rt => rt.Token).IsUnique();
             });
 
             // Configure Employee entity
@@ -147,6 +163,10 @@ namespace HRMS.Data
                       .HasForeignKey(e => e.ManagerId)
                       .IsRequired(false)
                       .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasMany(e => e.RefreshTokens)
+                      .WithOne(rf => rf.Employee)
+                      .HasForeignKey(rf => rf.EmployeeId);
 
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.HasIndex(e => e.DepartmentId);
@@ -344,7 +364,7 @@ namespace HRMS.Data
 
                 // Employees (One-to-Many)
                 entity.HasMany(e => e.Employees)
-                      .WithOne(e => e.Department)
+                      .WithOne(d => d.Department)
                       .HasForeignKey(e => e.DepartmentId)
                       .OnDelete(DeleteBehavior.Restrict); 
 
@@ -546,19 +566,14 @@ namespace HRMS.Data
                 entity.HasIndex(l => l.IsDeleted);
             });
 
-            // Seed Department entity
-
-            //modelBuilder.Entity<Department>(entity =>
-            //{
-            //    entity.HasData(
-            //        new Department { Id = 1, Name = "HR" },
-            //        new Department { Id = 2, Name = "Frontend" },
-            //        new Department { Id = 3, Name = "Backend" },
-            //        new Department { Id = 4, Name = "Marketing" },
-            //        new Department { Id = 5, Name = "Management" });
-            //});
-
             
+
+            modelBuilder.Entity<IdentityRole>().HasData(
+           new IdentityRole { Id = "1", Name = "Admin", NormalizedName = "ADMIN" },
+           new IdentityRole { Id = "2", Name = "Hr", NormalizedName = "HR" },
+           new IdentityRole { Id = "3", Name = "Manager", NormalizedName = "MANAGER" },
+           new IdentityRole { Id = "4", Name = "Employee", NormalizedName = "EMPLOYEE" }
+           );
 
             modelBuilder.Entity<IdentityRole<Guid>>().ToTable("roles");
             modelBuilder.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");
@@ -567,12 +582,7 @@ namespace HRMS.Data
             modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("user_tokens");
             modelBuilder.Entity<IdentityRoleClaim<Guid>>().ToTable("role_claims");
 
-            modelBuilder.Entity<IdentityRole>().HasData(
-            new IdentityRole { Id = "1", Name = "Admin", NormalizedName = "ADMIN" },
-            new IdentityRole { Id = "2", Name = "Hr", NormalizedName = "HR" },
-            new IdentityRole { Id = "3", Name = "Manager", NormalizedName = "MANAGER" },
-            new IdentityRole { Id = "4", Name = "Employee", NormalizedName = "EMPLOYEE" }
-            );
+           
 
         }
     }

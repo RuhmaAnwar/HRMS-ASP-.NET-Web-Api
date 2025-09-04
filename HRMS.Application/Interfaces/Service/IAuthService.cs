@@ -16,5 +16,7 @@ namespace HRMS.Services.Interfaces
         Task<IdentityResult> ForgotPasswordAsync(ForgotPasswordRequestDTO dto);
         Task<Employee> LoginJWT(LoginRequestDto dto);
         Task<string> GenerateJwtToken(Employee user);
+        string GenerateHashedRefreshToken();
+        Task<TokenResponseDTO> CreateRefreshTokenAsync(Guid userId, string accessToken);
     }
 }

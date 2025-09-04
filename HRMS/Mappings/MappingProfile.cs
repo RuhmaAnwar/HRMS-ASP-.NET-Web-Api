@@ -156,6 +156,20 @@ namespace HRMS.Mappings
                 .ForMember(dest => dest.EmployeeId, opt => opt.Ignore())
                 .ForMember(dest => dest.Employee, opt => opt.Ignore());
 
+            // RefreshTokenRequestDTO to RefreshToken
+
+            CreateMap<RefreshTokenRequestDTO, RefreshToken>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.Token, opt => opt.MapFrom(src => src.RefreshToken))
+                .ForMember(dest => dest.EmployeeId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow.AddHours(5)))
+                .ForMember(dest => dest.ExpiresAt, opt => opt.MapFrom(src => DateTime.UtcNow.AddDays(7)))
+                .ForMember(dest => dest.IsRevoked, opt => opt.MapFrom(src => false));
+
+            // RefreshToken to TokenResponseDTO
+            CreateMap<RefreshToken, TokenResponseDTO>()
+                .ForMember(dest => dest.RefreshToken, opt => opt.MapFrom(src => src.Token));
+
 
         }
     }

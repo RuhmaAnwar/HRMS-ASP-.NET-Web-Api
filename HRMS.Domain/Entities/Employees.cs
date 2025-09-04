@@ -67,6 +67,7 @@ namespace HRMS.Models
         public ICollection<Leave> LeaveRequests { get; set; }
 
         public ICollection<Leave> ApprovedLeaves { get; set; }
+        public ICollection<RefreshToken> RefreshTokens { get; set; }
 
     }
 }

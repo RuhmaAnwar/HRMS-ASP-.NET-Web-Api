@@ -1,12 +1,15 @@
-﻿
-using AutoMapper;
+﻿using AutoMapper;
 using HRMS.Dtos.RequestDtos;
+using HRMS.Dtos.ResponseDtos;
 using HRMS.Services.Interfaces;
-using Microsoft.AspNet.Identity;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Threading.Tasks;
+using HRMS.Models;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using HRMS.Data;
 
 namespace HRMS.Controllers.v1
 {
@@ -17,15 +20,18 @@ namespace HRMS.Controllers.v1
         private readonly IAuthService _authService;
         private readonly IEmployeeService _employeeService;
         private readonly IMapper _mapper;
+        private readonly ApplicationDbContext _context;
 
         public AuthControllerJWTV1(
             IAuthService authService,
             IEmployeeService employeeService,
-            IMapper mapper)
+            IMapper mapper,
+            ApplicationDbContext context)
         {
             _authService = authService;
             _employeeService = employeeService;
             _mapper = mapper;
+            _context = context;
         }
 
         [HttpPost("login")]
@@ -33,74 +39,61 @@ namespace HRMS.Controllers.v1
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
         {
             var response = await _authService.LoginJWT(dto);
-
-            var token = await _authService.GenerateJwtToken(response);
-
-            return Ok(new { Token = token });
-            //return Ok(response);
+            string token = await _authService.GenerateJwtToken(response);
+            var refreshToken = await _authService.CreateRefreshTokenAsync(response.Id, token);
+            return Ok(refreshToken);
         }
 
-        //[HttpPost("logout")]
-        //public async Task<IActionResult> Logout()
-        //{
-        //    await _authService.LogoutAsync();
-        //    return NoContent();
-        //}
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDTO dto)
+        {
+            if (dto == null || string.IsNullOrEmpty(dto.RefreshToken))
+            {
+                return BadRequest("Refresh token is required.");
+            }
 
-        //[HttpPost("register")]
-        //[Authorize(Roles = "Admin,HR")]
-        //public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
-        //{
-        //    var employee = await _employeeService.CreateAsync(
-        //        _mapper.Map<EmployeeCreateRequestDto>(dto));
+            // Find the refresh token in the database
+            var refreshToken = await _context.RefreshTokens
+                .Include(rt => rt.Employee)
+                .FirstOrDefaultAsync(rt => rt.Token == dto.RefreshToken);
 
-        //    return CreatedAtAction(
-        //       "GetEmployeeById",
-        //        "Employees",
-        //        new { id = employee.Id },
-        //        employee
-        //    );
-        //}
+            if (refreshToken == null)
+            {
+                return BadRequest("Invalid refresh token.");
+            }
 
-        //[HttpPost("forgot-password")]
-        //[AllowAnonymous]
-        //public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO dto)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
+            // Check if the token is expired or revoked
+            if (refreshToken.IsRevoked || refreshToken.ExpiresAt < DateTime.UtcNow)
+            {
+                return BadRequest("Refresh token is expired or revoked.");
+            }
 
-        //    var result = await _authService.ForgotPasswordAsync(dto);
+            // Generate a new JWT for the user
+            var employee = refreshToken.Employee;
+            var newAccessToken = await _authService.GenerateJwtToken(employee);
 
-        //    if (result.Succeeded)
-        //        return Ok(result);
+            // Optionally generate a new refresh token (token rotation)
+            var newRefreshToken = await _authService.CreateRefreshTokenAsync(employee.Id, newAccessToken);
 
-        //    return BadRequest(result.Errors.Select(x => x.Description));
-        //}
+            // Revoke the old refresh token
+            refreshToken.IsRevoked = true;
+            refreshToken.RevokedAt = DateTime.UtcNow.AddHours(5);
+            await _context.SaveChangesAsync();
 
-        //[HttpPost("roles/{Email}")]
-        //[Authorize(Roles = "Admin")]
-        //public async Task<IActionResult> AssignRoles(string email, [FromBody] RoleAssignmentRequestDto dto)
-        //{
-        //    Guid? userId = _employeeService.GetIdByEmail(email);
-        //    var response = await _authService.AssignRolesAsync(userId.Value, dto);
-        //    return Ok(response);
-        //}
+            return Ok(new TokenResponseDTO
+            {
+                Token = newAccessToken,
+                RefreshToken = newRefreshToken.RefreshToken
+            });
+        }
 
-        //[HttpGet("roles/{userId:Guid}")]
-        //[Authorize(Roles = "Admin,HR")]
-        //public async Task<IActionResult> GetRoles(Guid userId)
-        //{
-        //    var response = await _authService.GetRolesAsync(userId);
-        //    return Ok(response);
-        //}
-
-        //[HttpGet("me")]
-        //[Authorize]
-        //public async Task<IActionResult> GetCurrentUser()
-        //{
-        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    var response = await _authService.GetCurrentUserAsync(userId);
-        //    return Ok(response);
-        //}
+        [HttpGet("protected-endpoint")]
+        [Authorize]
+        public IActionResult ProtectedEndpoint()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Ok($"Hello, user {userId}! This is a protected endpoint.");
+        }
     }
 }

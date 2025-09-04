@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 namespace HRMS.Repositories
 {
@@ -115,7 +116,7 @@ namespace HRMS.Repositories
                 issuer: "localhost", // The token issuer, typically your application's URL
                 audience: "Profile", // The intended recipient of the token, typically the client's URL
                 claims: claims, // The list of claims to include in the token
-                expires: DateTime.UtcNow.AddMinutes(1),
+                expires: DateTime.UtcNow.AddMinutes(2),
                 signingCredentials: creds // The credentials used to sign the token
             );
 
@@ -126,5 +127,24 @@ namespace HRMS.Repositories
             var token = tokenHandler.WriteToken(tokenDescriptor);
             return token;
         }
+
+        public async Task<RefreshToken> CreateRefreshTokenAsync(Guid userId, string hashedRefreshToken)
+        {
+            var refreshTokenEntity = new RefreshToken
+            {
+                Token = hashedRefreshToken,
+                EmployeeId = userId,
+                //Refresh tokens are set to expire after 7 days (you can adjust this as needed).
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                CreatedAt = DateTime.UtcNow.AddHours(5),
+                IsRevoked = false
+            };
+            // The hashed refresh token, along with associated user and client information, is stored in the RefreshTokens table.
+            _context.RefreshTokens.Add(refreshTokenEntity);
+            await _context.SaveChangesAsync();
+            return refreshTokenEntity;
+        }
+
+        
     }
 }

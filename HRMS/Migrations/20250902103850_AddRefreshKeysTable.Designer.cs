@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HRMS.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250901101816_SeedSigningKeys")]
-    partial class SeedSigningKeys
+    [Migration("20250902103850_AddRefreshKeysTable")]
+    partial class AddRefreshKeysTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -148,29 +148,29 @@ namespace HRMS.Migrations
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440000"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5329),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(2928),
                             Description = "Human Resource dept",
                             IsDeleted = false,
                             Name = "HR",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5471)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(3079)
                         },
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440001"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5717),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(3324),
                             Description = "engineering dept",
                             IsDeleted = false,
                             Name = "Engineering",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5717)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(3324)
                         },
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440002"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5719),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(3326),
                             Description = "Finance dept",
                             IsDeleted = false,
                             Name = "Finance",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 481, DateTimeKind.Utc).AddTicks(5720)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 121, DateTimeKind.Utc).AddTicks(3327)
                         });
                 });
 
@@ -331,8 +331,8 @@ namespace HRMS.Migrations
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
                             AccessFailedCount = 0,
                             Address = "HQ",
-                            ConcurrencyStamp = "50637a17-e898-41b9-9bf9-03588237e0ac",
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 422, DateTimeKind.Utc).AddTicks(9305),
+                            ConcurrencyStamp = "f1948295-43db-4caa-92b3-2e3a638b2d39",
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 54, DateTimeKind.Utc).AddTicks(1641),
                             DateOfBirth = new DateTime(2003, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             DepartmentId = new Guid("550e8400-e29b-41d4-a716-446655440001"),
                             Email = "ruhma@email.com",
@@ -345,15 +345,15 @@ namespace HRMS.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "RUHMA@EMAIL.COM",
                             NormalizedUserName = "RUHMA@EMAIL.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEM6b8Xvl9J4y1JCdyR11wOFFWOeXw4vq4p5Z3HwJMCWRs8tXgWG2oyzyGAobpqwfVg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAECjOtwAmJ6isqDL6segRL4sF5zfiyfw6EB9tbv8ctixJWOewcWNo9WzANd2mb5bmJg==",
                             PhoneNumber = "03077147775",
                             PhoneNumberConfirmed = true,
                             PositionId = new Guid("550e8400-e29b-41d4-a716-446655440101"),
                             Salary = 1000m,
-                            SecurityStamp = "59a3bb0b-8846-4058-99e7-7b532930f9b0",
+                            SecurityStamp = "b03e1d0d-2049-4f72-92db-8c8482b590b4",
                             TotalLeaves = 25,
                             TwoFactorEnabled = false,
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 422, DateTimeKind.Utc).AddTicks(9440),
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 54, DateTimeKind.Utc).AddTicks(1783),
                             UserName = "ruhma@email.com"
                         });
                 });
@@ -504,39 +504,76 @@ namespace HRMS.Migrations
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440100"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6450),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5289),
                             DepartmentId = new Guid("550e8400-e29b-41d4-a716-446655440000"),
                             Description = "human resource manager",
                             IsDeleted = false,
                             SalaryRangeMax = 200000.00m,
                             SalaryRangeMin = 320000.00m,
                             Title = "HR Manager",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6602)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5489)
                         },
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440101"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6867),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5757),
                             DepartmentId = new Guid("550e8400-e29b-41d4-a716-446655440001"),
                             Description = "snr soft engr",
                             IsDeleted = false,
                             SalaryRangeMax = 200000.00m,
                             SalaryRangeMin = 150000.00m,
                             Title = "Software Engineer",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6868)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5757)
                         },
                         new
                         {
                             Id = new Guid("550e8400-e29b-41d4-a716-446655440102"),
-                            CreatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6872),
+                            CreatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5760),
                             DepartmentId = new Guid("550e8400-e29b-41d4-a716-446655440002"),
                             Description = "snr soft engr",
                             IsDeleted = false,
                             SalaryRangeMax = 200000.00m,
                             SalaryRangeMin = 320000.00m,
                             Title = "Financial Analyst",
-                            UpdatedAt = new DateTime(2025, 9, 1, 10, 18, 15, 477, DateTimeKind.Utc).AddTicks(6872)
+                            UpdatedAt = new DateTime(2025, 9, 2, 10, 38, 50, 117, DateTimeKind.Utc).AddTicks(5761)
                         });
+                });
+
+            modelBuilder.Entity("HRMS.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("refresh_tokens", (string)null);
                 });
 
             modelBuilder.Entity("HRMS.Models.SigningKey", b =>
@@ -569,63 +606,18 @@ namespace HRMS.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SigningKeys");
+                    b.ToTable("signing_keys", (string)null);
 
                     b.HasData(
                         new
                         {
-                            Id = new Guid("130990e7-b4ca-464b-987c-a75de392cad2"),
-                            CreatedAt = new DateTime(2025, 9, 1, 15, 18, 15, 403, DateTimeKind.Utc).AddTicks(6534),
-                            ExpiresAt = new DateTime(2026, 9, 1, 10, 18, 15, 403, DateTimeKind.Utc).AddTicks(6758),
+                            Id = new Guid("d15a1571-e276-4f8c-87de-ff3848349c92"),
+                            CreatedAt = new DateTime(2025, 9, 2, 15, 38, 50, 38, DateTimeKind.Utc).AddTicks(1721),
+                            ExpiresAt = new DateTime(2026, 9, 2, 10, 38, 50, 38, DateTimeKind.Utc).AddTicks(1947),
                             IsActive = true,
-                            KeyId = "e309ce68-e280-4fb2-a88f-d24ee37ddb51",
-                            PrivateKey = "MIIEpAIBAAKCAQEAvwtEj2A6U6hsWueTq7wnQ11CcGm8qrgTGUKjHDdJwKyvXjJMWiXnR3DuBKpZndXOyQEvOtIcwRzhMmfFkBuBSE66QKhp9IU0mSpKvRLn5uPqWEPoJIRdadGat5KdjsmQT5oUhH8yvfgxq829hhZaxJfUDcTPuPVFwcnnV6/5qtxjF3DkptZ2wIVhOnUkpIZc3h6IpDaBku+j9cLw1ho7AAYpNLiE2SC8k0/9+4EAU1hGYXPJd7HFht3Cb584EnfO9wOYQy8BhqiCwImGOLhmNkYtPLhnyG79nu2iC9ztm3qqx75elYscmkyMERUe2s9TtEmnZpYFmX4V0pZR3t4X4QIDAQABAoIBABXVcdZ5BvF8tDWHdecQr+QRCoDSdM+GDhi69u1InFM66Sf406UR4+bUTz+VQHy7bNCoI/+y97pSVKJwHbIkkpfy93JgTQu3FZXTsYr+WCaZMbU4vZU+03Y+kFIenYcuHiIa1/F0oBX6AaNC9kAW2fTR7VhNf/gBgCFvs9Lft8cBCl7NsHlmOMkk7Li65pxm9rU9D8e4HrcpOELFO2At2wGDhAdWQEHrFlrvQ8zHLOXXkWztGyvxT2kCNCP9EnF61dcoRwrF11x3lSMO0vJYtwDTZ7Ve2Uv9FrNm/yjEGzKKDGYET7/CHoyO1jOy3HpdgWeG7emMvsk+1zAGtMyjwCkCgYEA7OZJzLaXFpgpl+NB5T5ExXY/K2KJwbHZTBxiwq57bnDG8WaUQvKYL2taCXPMaPSQcuP4QEDNRJD/TZLqdiX6bptL3IQYn8H20xERuBioS/rfpb3CXMJ/Wh1raadzTzKjMx8QkOIsCm0sTRbC6VZ/PIPB9eGafErILQzHr1D6fGsCgYEAznKAMDyUVop2PtwIRerRCVnvdj+yIotM6ZabgodHdzPEMIe5OROahShQxxIYvx6lIBo1d0TSNLsGrhIwVWvL8VhuuG3qoNogTYBwbCDlDyx8CzHnHkV+5KJUrL7OhCNY+THZSX6JCD3CBeF4jT8RJBLrclcpDRoE/AUcMWBGj+MCgYEA0/jnVh6XKKd0qCy33LkP7iP1OAvOuZs6lUjc8dgQJ+0PhhdEWHcbx2pmQQj1gYA79CGaE1woj86yMqZf1uH6qJealLE6G1ECWy/ty+18Qag0D+iwjjGWpHqojvw/SEFGGEsWlp1ZzOaM+lmAhCtaZDp9Blcc1VRQs0a5MlziFQsCgYBy5w+pyU3WjOIbQmPoZjVKOyAodHM0/sskB4suLxT7p3g+eowA1IRgMHwlEFFtriTBpVS0uT011BJ3t+/m20R7Y3jcdXDtbfokqKPpyrUyqNOxd2jnVE63+hGew+Q1b2cJ61DAswiZ6aWfmEp8cumbZlxdG13hyOWVT1LNuIQNeQKBgQDh5HEO2btWD0kQz6ad3wrexflV3p9i/pDsTQvoSpZ1+DwvwMnWC1mrdna/KlQGZg75UsByZ+KD43+v/OVA2M20o68TusIFibnIUvnEaLTUQhJsWgW4DLCTcFTlMH2xo/gCgv8/hYkhPh6J7nvQ9J8H8NU7LkuEOPue8xXD6zgSXA==",
-                            PublicKey = "MIIBCgKCAQEAvwtEj2A6U6hsWueTq7wnQ11CcGm8qrgTGUKjHDdJwKyvXjJMWiXnR3DuBKpZndXOyQEvOtIcwRzhMmfFkBuBSE66QKhp9IU0mSpKvRLn5uPqWEPoJIRdadGat5KdjsmQT5oUhH8yvfgxq829hhZaxJfUDcTPuPVFwcnnV6/5qtxjF3DkptZ2wIVhOnUkpIZc3h6IpDaBku+j9cLw1ho7AAYpNLiE2SC8k0/9+4EAU1hGYXPJd7HFht3Cb584EnfO9wOYQy8BhqiCwImGOLhmNkYtPLhnyG79nu2iC9ztm3qqx75elYscmkyMERUe2s9TtEmnZpYFmX4V0pZR3t4X4QIDAQAB"
-                        });
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NormalizedName")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("IdentityRole");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = "1",
-                            Name = "Admin",
-                            NormalizedName = "ADMIN"
-                        },
-                        new
-                        {
-                            Id = "2",
-                            Name = "Hr",
-                            NormalizedName = "HR"
-                        },
-                        new
-                        {
-                            Id = "3",
-                            Name = "Manager",
-                            NormalizedName = "MANAGER"
-                        },
-                        new
-                        {
-                            Id = "4",
-                            Name = "Employee",
-                            NormalizedName = "EMPLOYEE"
+                            KeyId = "1c6abb0c-533f-47d0-a78b-4f7357b05532",
+                            PrivateKey = "MIIEpAIBAAKCAQEAxgV3trGyIqKf4p0Y0I9UKEBkn7i875IaPxx3lF6PqIYg/3TNz9yAXIYEwQhgOLTj1KFvLKbXIBT3DYuhkckStDGaN+YMnnbWDW0agU0D1H8j5Jgt+GuaPOu1z1vibDmvElKtfbjcYkwGZyz6+WQf9eFEgc0adxlBVAYgIiXcnUTMS1/vwXix5gMdw1zFGWqp1ThGGVsu1v6byrSdtYKiqc1etyyWDuakYR9yhCIArofPm8s27tRLzRswUaj85tPnUQHNuLGU+3Zzypka8arxQp3Ii63A1dEc+iPahe9pvPvPht/O7aKDuODNIDHLMkqrqTltXNTX0c1wj3x/lsVdSQIDAQABAoIBAF/2pl1TIBDI3tLjbvMjgpU/H4SH8ofnNfD/yrOMX/I7jiI+aL8jDNHJ4OPrOzY/82lIEqiA8iAKCO/3iwUrfHT21NXiFpt026cGCKJAwGpqcuqFFUIeY1DCqgkjbkckbUNj7c/Pln3Meg3mLnpNm299C8Ybr4eoJZCip0/lKVTM9wkqLm2lorbMhAVXo1Q/qhmqHsIzo7CPI713P0ze7++l2jZGFVx8PUqWKXevpAWi2NWFFnTecngopp7OV9w9vX6lzAW/foKuRZiOisb6N5CqjdLjUfVf9apYaYh3sGl0LymEcLxJU/7t+mEXGq31p0Yl9XbdjlANACl2T6PriUECgYEAys/0lQxOiIvznwhW3SW3IqweDv2qJl9Y1Ezgei1NiauF84QWDzxbHB/0KVy323p+/+YYBZU2VoTZAedx/x6in9p3eEt23534DmCA1DglqRXxoba2k//TtWe1GaMbRU41nDFb8JvhgZVxxypQ54OikKRiyRyqMbMJUk8rHitzet8CgYEA+fPdbdxWhfqhhxk0Q65K8ubofrby40p8eZ9miu48Fmzi37AvEMv0bssB2sZ8n0rvaso49tj/RO5HWY8PNzdRLz8O03auGY4j7GNa7OtDASegK37OYeZ7chBy+mX6gMOY/hbO2ECFKk9EQpUkHYw4P63v01lrekplEU1rndKIVNcCgYAkAYVnjLbIkSggPMfHHTIFKs9vU+OISncnwbo8lpxka5otYG7WJ535QUcErNxLT9UKM1xiaVorRAyOxPs9EsBGZu+84JDrJE1sp/9XLdypxyaN0jVZ0xpP42iIc6ecx0THRRAQiGwhqFl5xW51m64ZxcVv9PHWPvXRshJymb43uwKBgQDTDuu796EL8u1wMYUjXUomP3q0fPEtodjnrgSdbbtJSFpufcvQSBg3ca44OQBEVbdCmk1tiyBJ6VZQNm+ntUsVNQ7k2sL6Cz8kPWUqxyFGGVqzP5kvq7ozP9aGv5O+JOvMKiAxFJIdft9pxZvAY4Wfp9TpxwjtM2KSMKidlIfP8wKBgQDHh20Ug2Qdh6GDYWW975avc9ZtzybkR3H9+JYeJ+9tUGjrmCmhTxhsr6jB39U+PDmHDJYsKT98UUz0oaZ8R1OAiQpJD2dotSzjPtUOjMbG0vLowiyq4uX8v4W0FtApu9Pj8Y8ZvuwaUygS7XoRtKF/U1hRJq3dRlqiiS3iBV3k0w==",
+                            PublicKey = "MIIBCgKCAQEAxgV3trGyIqKf4p0Y0I9UKEBkn7i875IaPxx3lF6PqIYg/3TNz9yAXIYEwQhgOLTj1KFvLKbXIBT3DYuhkckStDGaN+YMnnbWDW0agU0D1H8j5Jgt+GuaPOu1z1vibDmvElKtfbjcYkwGZyz6+WQf9eFEgc0adxlBVAYgIiXcnUTMS1/vwXix5gMdw1zFGWqp1ThGGVsu1v6byrSdtYKiqc1etyyWDuakYR9yhCIArofPm8s27tRLzRswUaj85tPnUQHNuLGU+3Zzypka8arxQp3Ii63A1dEc+iPahe9pvPvPht/O7aKDuODNIDHLMkqrqTltXNTX0c1wj3x/lsVdSQIDAQAB"
                         });
                 });
 
@@ -834,6 +826,17 @@ namespace HRMS.Migrations
                     b.Navigation("Department");
                 });
 
+            modelBuilder.Entity("HRMS.Models.RefreshToken", b =>
+                {
+                    b.HasOne("HRMS.Models.Employee", "Employee")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -901,6 +904,8 @@ namespace HRMS.Migrations
                     b.Navigation("DepartmentLed");
 
                     b.Navigation("LeaveRequests");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Subordinates");
                 });

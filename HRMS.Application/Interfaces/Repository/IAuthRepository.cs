@@ -13,5 +13,6 @@ namespace HRMS.Repositories.Interfaces
         Task<IdentityResult> RemoveFromRolesAsync(Employee user, string[] roles);
         Task<string[]> GetRolesAsync(Employee user);
         Task<string> GenerateJwtToken(Employee user);
+        Task<RefreshToken> CreateRefreshTokenAsync(Guid userId, string hashedRefreshToken);
     }
 }

@@ -1,9 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36327.8 d17.14
+VisualStudioVersion = 17.14.36327.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRMS", "HRMS\HRMS.csproj", "{911061B7-0146-415A-9528-26A8E1B85F1B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRMS.Web", "HRMS\HRMS.Web.csproj", "{911061B7-0146-415A-9528-26A8E1B85F1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRMS.Infrastructure", "HRMS.Infrastructure\HRMS.Infrastructure.csproj", "{7AEAC5D4-2D92-41E9-B046-4E2377934C1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRMS.Application", "HRMS.Application\HRMS.Application.csproj", "{C8B30CD7-D3E3-4BB0-A16F-C1C13E643CAF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRMS.Domain", "HRMS.Domain\HRMS.Domain.csproj", "{105FC4DB-F946-49CE-89A6-61994898F9A7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +21,18 @@ Global
 		{911061B7-0146-415A-9528-26A8E1B85F1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{911061B7-0146-415A-9528-26A8E1B85F1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{911061B7-0146-415A-9528-26A8E1B85F1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AEAC5D4-2D92-41E9-B046-4E2377934C1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AEAC5D4-2D92-41E9-B046-4E2377934C1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AEAC5D4-2D92-41E9-B046-4E2377934C1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AEAC5D4-2D92-41E9-B046-4E2377934C1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8B30CD7-D3E3-4BB0-A16F-C1C13E643CAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8B30CD7-D3E3-4BB0-A16F-C1C13E643CAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8B30CD7-D3E3-4BB0-A16F-C1C13E643CAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8B30CD7-D3E3-4BB0-A16F-C1C13E643CAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{105FC4DB-F946-49CE-89A6-61994898F9A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{105FC4DB-F946-49CE-89A6-61994898F9A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{105FC4DB-F946-49CE-89A6-61994898F9A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{105FC4DB-F946-49CE-89A6-61994898F9A7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
